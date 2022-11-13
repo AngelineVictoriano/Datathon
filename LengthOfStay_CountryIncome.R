@@ -52,7 +52,7 @@ los_high_income <- los_all %>%
 # Plot LOS in high income countries by region
 los_high_income %>% ggplot(aes(x = Year, y = Value, colour = Country)) +
   geom_line() +
-  facet_wrap(~Region)
+  facet_wrap(~Region) +
   labs(title = "Average inpatient length of stay in high-income countries",
        x = "Year", y = "Length of stay (days)")
 # East Asia & Pacific Region seem to have the most variation. Zoom in.
