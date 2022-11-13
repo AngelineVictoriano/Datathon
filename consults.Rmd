@@ -1,0 +1,82 @@
+---
+title: "Number of consultations vs Health Spending (% GDP)"
+output: html_document
+date: "2022-11-13"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+```
+
+```{r}
+high_inc_countries <- c("LUX", "IRL", "NOR",
+                        "CHE", "USA", "DNK",
+                        "NLD", "AUS", "SWE",
+                        "AUT")
+low_inc_countries <- c("IND", "IDN", "ZAF",
+                       "BRA", "CHN", "COL",
+                       "MEX", "CRI", "CHL",
+                       "RUS")
+```
+
+```{r}
+md_consult_per_capita_hi <- read.csv("oecd.csv") %>% 
+  filter(COU %in% high_inc_countries,
+         VAR == "CONSCOVI",
+         Year == "2018") %>% 
+  select("COU", "Country", "Value")
+
+md_consult_per_capita_lo <- read.csv("oecd.csv") %>% 
+  filter(COU %in% low_inc_countries,
+         VAR == "CONSCOVI",
+         Year == "2018") %>% 
+  select("COU", "Country", "Value")
+
+```
+
+```{r}
+health_spending_pcgdp_hi <- read.csv("HealthSpending.csv") %>% 
+  filter(LOCATION %in% high_inc_countries,
+         SUBJECT == "TOT",
+         MEASURE == "PC_GDP",
+         TIME == "2018") %>% 
+  select("LOCATION", "Value")
+colnames(health_spending_pcgdp_hi)[1] <- "COU"
+
+health_spending_pcgdp_lo <- read.csv("HealthSpending.csv") %>% 
+  filter(LOCATION %in% low_inc_countries,
+         SUBJECT == "TOT",
+         MEASURE == "PC_GDP",
+         TIME == "2018") %>% 
+  select("LOCATION", "Value")
+colnames(health_spending_pcgdp_lo)[1] <- "COU"
+```
+
+```{r}
+consult_vs_spend_hi <- inner_join(md_consult_per_capita_hi, health_spending_pcgdp_hi, by = "COU")
+colnames(consult_vs_spend_hi)[3:4] <- c("MD consult", "Health Spending")
+
+consult_vs_spend_lo <- inner_join(md_consult_per_capita_lo, health_spending_pcgdp_lo, by = "COU")
+colnames(consult_vs_spend_lo)[3:4] <- c("MD consult", "Health Spending")
+
+
+```
+
+```{r}
+p1 <- consult_vs_spend_hi %>% 
+  ggplot(aes(x = `Health Spending`, y = `MD consult`,
+             colour = Country)) +
+  geom_point() 
+
+p2 <- consult_vs_spend_lo %>% 
+  ggplot(aes(x = `Health Spending`, y = `MD consult`,
+             colour = Country)) +
+  geom_point() 
+```
+
+```{r}
+library(patchwork)
+p1 + p2
+```
+
