@@ -12,10 +12,16 @@ library(readxl)
 country_class_raw <- read_excel("CLASS.xlsx")
 
 country_class <- country_class_raw %>% 
-  rename(country = Economy) %>% 
-  select(country, Region, "Income group")
+  rename(country = Economy, income_group = "Income group") %>% 
+  select(country, Region, income_group) %>% 
+  mutate(income_group = factor(income_group, levels = c("Low income", "Lower middle income", "Upper middle income", "High income")))
+  
 
-
+# Before saving Renaming Russia and Korea
+country_class <- country_class %>% 
+  mutate(country = replace(country, country == "Russian Federation", "Russia")) %>% 
+  mutate(country = replace(country, country == "Korea, Dem. People's Rep.", "Korea"))
+  
 # saving processed data
 saveRDS(country_class, here::here("processed_data", "country_class.rds"))
 
@@ -36,6 +42,11 @@ expenditure_data <- expenditure_raw %>%
 # saving processed data
 saveRDS(expenditure_data, here::here("processed_data", "expenditure_data.rds"))
 
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# combing income group and healthcare expenditure
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+income_and_spending <- country_class %>% 
+  inner_join(health_expenditure_to_GDP, by = c("country"))
 
 # loading healthcare utilization data
 oecd_data_raw <- read_csv(here::here("OECDUtilisationRaw.csv"))
@@ -47,6 +58,11 @@ oecd_data <- oecd_data_raw %>%
   pivot_wider(names_from = c(variable, measure),
               values_from = value,
               id_cols = c(year, country))
+
+# Before saving Renaming China and Korea
+country_class <- country_class %>% 
+  mutate(country = replace(country, country == "China (People's Republic of)", "China"))
+  
 
 # saving processed data
 saveRDS(oecd_data, here::here("processed_data", "oecd_data.rds"))
@@ -137,12 +153,176 @@ share_of_expenditure <- expenditure_data %>%
 
 share_of_expenditure <- share_of_expenditure %>% 
   mutate(total_contributions = 100 - total_contributions) %>% 
-  rename(unknown_contributions = total_contributions)
-  
+  rename(unknown_contributions = total_contributions) %>% 
+  # also reorder rows based on contributions
+  arrange(desc(govt_contributions))
+
+# saving processed data
+saveRDS(share_of_expenditure, here::here("processed_data", "share_of_expenditure.rds"))
 
 ###################################################################
 # plotting bar chart
 ###################################################################
+
+# making the data frame more longer for better plotting. Using pivot longer function
+share_of_expenditure_longer<- share_of_expenditure %>%
+  pivot_longer(!country, names_to = "contributions_type", values_to = "contributions")
+
+# Grouped
+share_of_expenditure_longer %>% 
+ggplot(aes(x=fct_inorder(country), y=contributions, fill=contributions_type)) + 
+  geom_bar(position="dodge", stat="identity") +
+  coord_flip()
+
+# Grouped but with stacked
+share_of_expenditure_longer %>% 
+  ggplot(aes(x=fct_inorder(country), y=contributions, fill=contributions_type)) + 
+  geom_bar(position="fill", stat="identity") +
+  labs(title = "Stacked bar chart showing share of healthcare expenditure  year 2019",
+       subtitle = "between governament and individual contributions (voluntary schemes or out-of-pocket)",
+       x = "Countries",
+       y = "Share of expenditure",
+       fill = "Portion of share") +
+  scale_y_continuous(labels = scales::percent) +
+  scale_fill_discrete(labels=c('Governament', 'Individual', 'Unknown')) +
+  coord_flip() 
+
+###################################################################
+# healthcare utilization
+###################################################################
+
+# consultations
+consultations <- oecd_data %>%
+  # selecting first column (country) and columns containing "doctors"
+  select(c(1,2) | contains("Doctors")) %>%
+  #renaming the column names
+  rename(consultations = 3) %>% 
+  # getting average across the years
+  group_by(country) %>%
+  summarise(mean_consultations = mean(consultations, na.rm = TRUE)) %>%
+  drop_na(2)
+
+# saving processed data
+saveRDS(consultations, here::here("processed_data", "consultations.rds"))
+
+# Before merging. Renaming Russia
+country_class <- country_class %>% 
+  mutate(country = replace(country, country == "Russian Federation", "Russia"))
+  
+# merging
+merged_data <- country_class %>% 
+  inner_join(consultations, by = c("country"))
+
+# merging with health expenditure
+merged_data <- merged_data %>% 
+  inner_join(health_expenditure_to_GDP, by = c("country"))
+
+# importing additional package
+library(ggExtra)
+library(hrbrthemes)
+
+# plotting 
+merged_data %>%
+  rename(income_group = "Income group") %>% 
+  ggplot(aes(x=mean_consultations, y = expenditure_to_GDP, shape = income_group, color = income_group)) +
+  geom_point(size = 3) +
+  geom_smooth(method=lm, se=FALSE, fullrange=FALSE) +
+  labs(title="Correlation of number of consultations with health expenditure",
+       subtitle = "is investing more in health reduces number of health consultations?",
+       x="Number of consultations per capita", y = "Health expenditure as percentage of GDP") + 
+  scale_color_brewer(palette="Dark2") + 
+  theme_classic()
+
+########################################
+# correlating the same with share of govt or compulsory healthcare funding
+#########################################
+
+merged_data <- merged_data %>% 
+  inner_join(share_of_expenditure, by = c("country"))
+
+# plotting
+merged_data %>%
+  rename(income_group = "Income group") %>% 
+  ggplot(aes(x=mean_consultations, y = govt_contributions, shape = income_group, color = income_group, size = expenditure_to_GDP)) +
+  geom_point(alpha=0.7) +
+  labs(title="Correlation of number of consultations with health expenditure",
+       subtitle = "is there a relationship with free healthcare and number of consultations?",
+       x="Number of consultations per capita", y = "Share of govt or compulsary healthcare financing",
+       color = "Income group",
+       size="Amount as percentage of GDP",
+       shape= "") + 
+  scale_color_brewer(palette="Dark2") + 
+  theme_classic()
+
+##################################################################################
+# getting data for immunization
+##################################################################################
+
+mean_immunization <- oecd_data %>%
+  # selecting country column and Immunization columns
+  select(c(2) | contains("Immunisation")) %>%
+  # group the rows by countries and get mean of immunization values
+  group_by(country) %>%
+  summarise(across(everything(), list(mean), na.rm = TRUE)) %>% 
+  # renaming the columns as good variable format
+  rename(hepatitis = 2, influenza=3, DPT=4, Measles=5)
+
+# saving processed data
+saveRDS(mean_immunization, here::here("processed_data", "mean_immunization.rds"))
+
+
+
+# merging with health expenditure
+merged_data <- income_and_spending %>% 
+  inner_join(mean_immunization, by = c("country"))
+
+
+# plotting 
+merged_data %>%
+  ggplot(aes(x=influenza, y = expenditure_to_GDP, shape = income_group, color = income_group)) +
+  geom_point(size = 3) +
+  geom_smooth(method=lm, se=FALSE, fullrange=FALSE) +
+  labs(title="Correlation of influenza immunisation coverage with health expenditure",
+       subtitle = "Is higher spending correlates with higher immunisation cover?",
+       x="Percentage of people covered", 
+       y = "Health expenditure as percentage of GDP",
+       shape = "Income group",
+       color = "Income group") + 
+  scale_color_brewer(palette="Dark2") + 
+  theme_classic()
+
+########################################
+# correlating the same with share of govt or compulsory healthcare funding
+#########################################
+
+merged_data <- merged_data %>% 
+  inner_join(share_of_expenditure, by = c("country"))
+
+
+# plotting
+merged_data %>%
+  ggplot(aes(x=influenza, y = govt_contributions, shape = income_group, color = income_group, size = expenditure_to_GDP)) +
+  geom_point(alpha=0.7) +
+  labs(title="Correlation of influensa vaccination cover with health expenditure",
+       subtitle = "?",
+       x="influensa vaccine coverage", y = "Share of govt or compulsary healthcare financing",
+       color = "Income group",
+       size="Amount as percentage of GDP",
+       shape= "Income group") + 
+  scale_color_brewer(palette="Dark2") + 
+  theme_classic()
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
