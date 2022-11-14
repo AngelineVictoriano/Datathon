@@ -64,7 +64,7 @@ health_expenditure_to_GDP <- expenditure_data %>%
   filter(year == 2019) %>%
   # as year 2019 is selected, the year column can be dropped
   select(-year) %>% 
-  # retain first two columns and extract all financing schemes
+  # retain first column and extract all financing schemes
   select(c(1) | contains("All financing schemes")) %>%
   # similarly, get all expenditure (under name current expenditure)
   select(c(1) | contains("Current expenditure on health (all functions)")) %>%
@@ -107,13 +107,42 @@ merged_data %>%  ggplot(aes(x=reorder(country, expenditure_to_GDP), y = expendit
   geom_bar(stat='identity', width=.4) +
   labs(title = "Barplot showing Healthcare expenditure by each country",
        subtitle = "as percentage of GDP",
+       x = "Coutries",
+       y = "Healthcare expenditure (% of GDP)",
        fill = "Income level") +
   coord_flip()
 
+###################################################################
+# getting share of govt/compulsory input and voluntary/out-of-pocket contributions
+# data from 2019 will be used 
+###################################################################
 
+share_of_expenditure <- expenditure_data %>%
+  filter(year == 2019) %>%
+  # as year 2019 is selected, the year column can be dropped
+  select(-year) %>% 
+  # retain first column (country) and extract govt and individual contributions
+  select(c(1) | contains("Government/compulsory schemes") | contains("Voluntary schemes/household out-of-pocket payments")) %>%
+  # getting all expenditure (subgroup)
+  select(c(1) | contains("Current expenditure on health (all functions)")) %>%
+  # get data from all providers
+  select(c(1) | contains("All providers")) %>%
+  # get "share of current expenditure on health"
+  select(c(1) | contains("Share of current expenditure on health")) %>%
+  rename(govt_contributions = 2, individual_contributions = 3) %>% 
+  # checking integrity of the data. the total contribution should come around 100%
+  mutate(total_contributions = govt_contributions + individual_contributions)
 
+# most of the countries show 100% contribution while handful of countries have 1-2% difference This can be shown as "unknown"
 
+share_of_expenditure <- share_of_expenditure %>% 
+  mutate(total_contributions = 100 - total_contributions) %>% 
+  rename(unknown_contributions = total_contributions)
+  
 
+###################################################################
+# plotting bar chart
+###################################################################
 
 
 
