@@ -301,14 +301,13 @@ merged_data <- merged_data %>%
 
 # plotting
 merged_data %>%
-  ggplot(aes(x=influenza, y = govt_contributions, shape = income_group, color = income_group, size = expenditure_to_GDP)) +
+  ggplot(aes(x=influenza, y = govt_contributions, color = income_group, size = expenditure_to_GDP)) +
   geom_point(alpha=0.7) +
   labs(title="Correlation of influensa vaccination cover with health expenditure",
-       subtitle = "?",
+       subtitle = " bimodal distribution of influensa coverate with health expenditure?",
        x="influensa vaccine coverage", y = "Share of govt or compulsary healthcare financing",
        color = "Income group",
-       size="Amount as percentage of GDP",
-       shape= "Income group") + 
+       size="Amount as percentage of GDP") + 
   scale_color_brewer(palette="Dark2") + 
   theme_classic()
 
