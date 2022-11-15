@@ -42,11 +42,6 @@ expenditure_data <- expenditure_raw %>%
 # saving processed data
 saveRDS(expenditure_data, here::here("processed_data", "expenditure_data.rds"))
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-# combing income group and healthcare expenditure
-##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-income_and_spending <- country_class %>% 
-  inner_join(health_expenditure_to_GDP, by = c("country"))
 
 # loading healthcare utilization data
 oecd_data_raw <- read_csv(here::here("OECDUtilisationRaw.csv"))
@@ -90,6 +85,15 @@ health_expenditure_to_GDP <- expenditure_data %>%
   select(c(1) | contains("Share of gross domestic product")) %>%
   # rename the column name to expenditure_to_GDP
   rename(expenditure_to_GDP = 2)
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# combing income group and healthcare expenditure
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+income_and_spending <- country_class %>% 
+  inner_join(health_expenditure_to_GDP, by = c("country"))
+
+# saving processed data
+saveRDS(income_and_spending, here::here("processed_data", "income_and_spending.rds"))
 
 
 ###########################################################
@@ -149,6 +153,10 @@ share_of_expenditure <- expenditure_data %>%
   # checking integrity of the data. the total contribution should come around 100%
   mutate(total_contributions = govt_contributions + individual_contributions)
 
+# Before saving Renaming China and Korea
+share_of_expenditure <- share_of_expenditure %>% 
+  mutate(country = replace(country, country == "China (People's Republic of)", "China"))
+
 # most of the countries show 100% contribution while handful of countries have 1-2% difference This can be shown as "unknown"
 
 share_of_expenditure <- share_of_expenditure %>% 
@@ -159,6 +167,15 @@ share_of_expenditure <- share_of_expenditure %>%
 
 # saving processed data
 saveRDS(share_of_expenditure, here::here("processed_data", "share_of_expenditure.rds"))
+
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+# combing income group and healthcare expenditure and share of expenditure
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+income_and_spending_with_share <- income_and_spending %>% 
+  inner_join(share_of_expenditure, by = c("country"))
+
+# saving processed data
+saveRDS(income_and_spending_with_share, here::here("processed_data", "income_and_spending_with_share.rds"))
 
 ###################################################################
 # plotting bar chart
@@ -271,7 +288,6 @@ mean_immunization <- oecd_data %>%
 saveRDS(mean_immunization, here::here("processed_data", "mean_immunization.rds"))
 
 
-
 # merging with health expenditure
 merged_data <- income_and_spending %>% 
   inner_join(mean_immunization, by = c("country"))
@@ -310,6 +326,35 @@ merged_data %>%
        size="Amount as percentage of GDP") + 
   scale_color_brewer(palette="Dark2") + 
   theme_classic()
+
+
+##########################################################################################################################
+
+
+# breast screening
+mean_screening_rate <- oecd_data %>%
+  # selecting country column and cervical screening columns
+  select(c(2) | contains("cancer screening, programme data")) %>%
+  # selecting cervical, breast colorectal columns. for colorectal cases, selecting "population" only one column
+  select(c(1) | contains("Cervical") | contains("Breast") | contains("population")) %>%
+  # group the rows by countries and get mean of screening rate
+  group_by(country) %>%
+  summarise(across(everything(), list(mean), na.rm = TRUE)) %>% 
+  # renaming columns
+  rename(cervical = 2, breast= 3, colorectal = 4)
+
+
+#################################
+# merging
+merged_data <- income_and_spending_with_share %>% 
+  inner_join(mean_immunization, by = c("country"))
+
+
+
+
+
+
+
 
 
 
