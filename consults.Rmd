@@ -23,15 +23,13 @@ low_inc_countries <- c("IND", "IDN", "ZAF",
 ```{r}
 md_consult_per_capita_hi <- read.csv("oecd.csv") %>% 
   filter(COU %in% high_inc_countries,
-         VAR == "CONSCOVI",
-         Year == "2018") %>% 
-  select("COU", "Country", "Value")
+         VAR == "CONSCOVI") %>% 
+  select("COU", "Country", "Value", "Year")
 
 md_consult_per_capita_lo <- read.csv("oecd.csv") %>% 
   filter(COU %in% low_inc_countries,
-         VAR == "CONSCOVI",
-         Year == "2018") %>% 
-  select("COU", "Country", "Value")
+         VAR == "CONSCOVI") %>% 
+  select("COU", "Country", "Value", "Year")
 
 ```
 
@@ -39,44 +37,42 @@ md_consult_per_capita_lo <- read.csv("oecd.csv") %>%
 health_spending_pcgdp_hi <- read.csv("HealthSpending.csv") %>% 
   filter(LOCATION %in% high_inc_countries,
          SUBJECT == "TOT",
-         MEASURE == "PC_GDP",
-         TIME == "2018") %>% 
-  select("LOCATION", "Value")
-colnames(health_spending_pcgdp_hi)[1] <- "COU"
+         MEASURE == "PC_GDP") %>% 
+  select("LOCATION", "Value", "TIME")
+colnames(health_spending_pcgdp_hi) <- c("COU", "Value", "Year")
 
 health_spending_pcgdp_lo <- read.csv("HealthSpending.csv") %>% 
   filter(LOCATION %in% low_inc_countries,
          SUBJECT == "TOT",
-         MEASURE == "PC_GDP",
-         TIME == "2018") %>% 
-  select("LOCATION", "Value")
-colnames(health_spending_pcgdp_lo)[1] <- "COU"
+         MEASURE == "PC_GDP") %>% 
+  select("LOCATION", "Value", "TIME")
+colnames(health_spending_pcgdp_lo) <- c("COU", "Value", "Year")
 ```
 
 ```{r}
-consult_vs_spend_hi <- inner_join(md_consult_per_capita_hi, health_spending_pcgdp_hi, by = "COU")
-colnames(consult_vs_spend_hi)[3:4] <- c("MD consult", "Health Spending")
+consult_vs_spend_hi <- inner_join(md_consult_per_capita_hi, health_spending_pcgdp_hi, by = c("COU" = "COU", "Year" = "Year"))
+colnames(consult_vs_spend_hi)[3:5] <- c("MD consult", "Year", "Health Spending")
 
-consult_vs_spend_lo <- inner_join(md_consult_per_capita_lo, health_spending_pcgdp_lo, by = "COU")
-colnames(consult_vs_spend_lo)[3:4] <- c("MD consult", "Health Spending")
+consult_vs_spend_lo <- inner_join(md_consult_per_capita_lo, health_spending_pcgdp_lo, by = c("COU" = "COU", "Year" = "Year"))
+colnames(consult_vs_spend_lo)[3:5] <- c("MD consult", "Year", "Health Spending")
 
 
 ```
 
 ```{r}
 p1 <- consult_vs_spend_hi %>% 
-  ggplot(aes(x = `Health Spending`, y = `MD consult`,
-             colour = Country)) +
-  geom_point() 
+  ggplot(aes(x = Year, y = `MD consult`, fill = Country)) +         
+  geom_col()
 
 p2 <- consult_vs_spend_lo %>% 
-  ggplot(aes(x = `Health Spending`, y = `MD consult`,
-             colour = Country)) +
-  geom_point() 
+  ggplot(aes(x = Year, y = `MD consult`, fill = Country)) +         
+  geom_col()
 ```
 
 ```{r}
 library(patchwork)
-p1 + p2
+p1 + p2 +
+  plot_annotation(title = "Doctor Consultations per Capita",
+                  subtitle = "of High and Low Income Countries")
 ```
 
