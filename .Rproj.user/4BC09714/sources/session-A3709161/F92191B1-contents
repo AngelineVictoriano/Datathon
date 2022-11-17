@@ -415,12 +415,47 @@ merged_data %>%
   theme_classic()
 
 
+############################################################################################################
+# trend of universal healthcare
+############################################################################################################
 
 
+UHC_trend <- expenditure_data %>%
+  # retain first column (country) and extract govt and individual contributions
+  select(c(1, 2) | contains("Government/compulsory schemes")) %>%
+  # getting all expenditure (subgroup)
+  select(c(1, 2) | contains("Current expenditure on health (all functions)")) %>%
+  # get data from all providers
+  select(c(1, 2) | contains("All providers")) %>%
+  # get "share of current expenditure on health"
+  select(c(1, 2) | contains("Share of current expenditure on health")) %>%
+  # renaming column
+  rename(UHC_share = 3) %>% 
+  # making year column as factors
+  mutate(year = as.factor(year))
 
+# plotting the UHC trend
+library(ggrepel)
 
-
-
+UHC_trend %>% 
+  ggplot(aes(x=year, y = UHC_share, group = country)) +
+  geom_line() +
+  geom_line(data = subset(UHC_trend,  country == "India"),color = "red", size = 1.25) +
+  geom_point(data = subset(UHC_trend,  country == "India" & year == 2019),color = "red") + 
+  geom_label_repel(data = subset(UHC_trend,  country == "India" & year == 2019), aes(label = country),
+                   nudge_x = 1) +
+  geom_line(data = subset(UHC_trend,  country == "United States"),color = "Green", size = 1.25) +
+  geom_line(data = subset(UHC_trend,  country == "United States" & year == 2022),color = "Green") +
+  geom_label_repel(data = subset(UHC_trend,  country == "United States" & year == 2020), aes(label = country),
+                   nudge_x = 1) +
+  geom_line(data = subset(UHC_trend,  country == "Cyprus"),color = "Blue", size = 1.25) +
+  geom_line(data = subset(UHC_trend,  country == "Cyprus" & year == 20222),color = "Blue") +
+  geom_label_repel(data = subset(UHC_trend,  country == "Cyprus" & year == 2020), aes(label = country),
+                   nudge_x = 1) +
+  labs(title="Trend of universal healthcare by countries",
+       subtitle = "The hightlighted countries shows significant increase",
+       x="Years", y = "Share of compulsory healthcare financing") + 
+  theme_classic() 
 
 
 
