@@ -458,6 +458,140 @@ UHC_trend %>%
   theme_classic() 
 
 
+############################################################################################################
+# Diagnostic exams
+############################################################################################################
+
+# number of CT scans
+# length of stay
+CT_scans <- oecd_data %>%
+  # selecting country column and length of stay column
+  select(c(2) | contains("Computed Tomography exams, total")) %>%
+  select(c(1) | contains("Per 1 000 population")) %>%
+  # renaming column
+  rename(CT_scans = 2) %>% 
+  # group the rows by countries and get mean of scans
+  group_by(country) %>%
+  summarise(mean_CT_scans = mean(CT_scans, na.rm = TRUE)) %>%
+  drop_na(2)
+
+########### merging ########
+merged_data <- income_and_spending_with_share %>% 
+  inner_join(CT_scans, by = c("country"))
+
+# Scatterplot
+merged_data %>% 
+  ggplot() + 
+  geom_count(aes(mean_CT_scans, expenditure_to_GDP, color = income_group), size = 2) + 
+  labs(title="Correlation of number of diagnositc exams with spending",
+       subtitle = "?",
+       x="Number of CT scans per 1000 population", y = "Healthcare expenditure") + 
+  geom_smooth(aes(mean_CT_scans, expenditure_to_GDP), method=lm, se=FALSE) +
+  scale_color_brewer(palette="Dark2") + 
+  theme_classic()
+ 
+
+# Scatterplot with universal healthcare
+merged_data %>% 
+  ggplot() + 
+  geom_count(aes(mean_CT_scans, govt_contributions, color = income_group), size = 2) + 
+  labs(title="Correlation of number of diagnositc exams with Universal healthcare",
+       subtitle = "?",
+       x="Number of CT scans per 1000 population", y = "Share of govt or complusory contributions") + 
+  geom_smooth(aes(mean_CT_scans, govt_contributions), method=lm, se=FALSE) +
+  scale_color_brewer(palette="Dark2") + 
+  theme_classic()
+
+
+############################################################################################################
+# Number of surgeries
+############################################################################################################
+
+# hip replacement
+hip_replacement <- oecd_data %>%
+  # selecting country column and length of stay column
+  select(c(2) | contains("Hip replacement")) %>%
+  select(c(1) | contains("per 100 000 population")) %>%
+  select(c(1) | contains("Total")) %>%
+  rename(hip_replacement_rate = 2) %>% 
+  # group the rows by countries and get mean of scans
+  group_by(country) %>%
+  summarise(mean_hip_replacement_rate = mean(hip_replacement_rate, na.rm = TRUE)) %>%
+  drop_na(2)
+
+########### merging ########
+merged_data <- income_and_spending_with_share %>% 
+  inner_join(hip_replacement, by = c("country"))
+
+
+# Scatterplot
+merged_data %>% 
+  ggplot() + 
+  geom_count(aes(mean_hip_replacement_rate, expenditure_to_GDP, color = income_group), size = 2) + 
+  labs(title="Correlation of number of hip surgeries with spending",
+       subtitle = "?",
+       x="Number of hip surgeries per 1000 population", y = "Healthcare expenditure") + 
+  geom_smooth(aes(mean_hip_replacement_rate, expenditure_to_GDP), method=lm, se=FALSE) +
+  scale_color_brewer(palette="Dark2") + 
+  theme_classic()
+
+# Scatterplot with UHC
+merged_data %>% 
+  ggplot() + 
+  geom_count(aes(mean_hip_replacement_rate, govt_contributions, color = income_group), size = 2) + 
+  labs(title="Correlation of number of hip surgeries with UHC",
+       subtitle = "?",
+       x="Number of hip surgeries per 1000 population", y = "Healthcare expenditure") + 
+  geom_smooth(aes(mean_hip_replacement_rate, govt_contributions), method=lm, se=FALSE) +
+  scale_color_brewer(palette="Dark2") + 
+  theme_classic()
+
+
+############################################################################################################
+# waiting times for surgeries
+############################################################################################################
+
+# cataract waiting
+cataract_waiting <- oecd_data %>%
+  # selecting country column and length of stay column
+  select(c(2) | contains("Cataract surgery")) %>%
+  select(c(1) | contains("Waiting times from specialist assessment to treatment")) %>%
+  select(c(1) | contains("Mean")) %>%
+  rename(cataract_waiting = 2) %>% 
+  # group the rows by countries and get mean of scans
+  group_by(country) %>%
+  summarise(mean_cataract_waiting_time = mean(cataract_waiting, na.rm = TRUE)) %>%
+  drop_na(2)
+
+########### merging ########
+merged_data <- income_and_spending_with_share %>% 
+  inner_join(cataract_waiting, by = c("country"))
+
+# Scatterplot
+merged_data %>% 
+  ggplot() + 
+  geom_count(aes(mean_cataract_waiting_time, expenditure_to_GDP, color = income_group), size = 2) + 
+  labs(title="Correlation of waiting times for cataract surgery with spending",
+       subtitle = "?",
+       x="Mean number of days for cataract surgery specilist assesement", y = "Healthcare expenditure") + 
+  geom_smooth(aes(mean_cataract_waiting_time, expenditure_to_GDP), method=lm, se=FALSE) +
+  scale_color_brewer(palette="Dark2") + 
+  theme_classic()
+
+# Scatterplot with UHC
+merged_data %>% 
+  ggplot() + 
+  geom_count(aes(mean_cataract_waiting_time, govt_contributions, color = income_group), size = 2) + 
+  labs(title="Correlation of waiting times with UHC",
+       subtitle = "?",
+       x="Mean number of days for cataract surgery specilist assesement", y = "Healthcare expenditure") + 
+  geom_smooth(aes(mean_cataract_waiting_time, govt_contributions), method=lm, se=FALSE) +
+  scale_color_brewer(palette="Dark2") + 
+  theme_classic()
+
+
+
+
 
 
 
