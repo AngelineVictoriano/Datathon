@@ -590,7 +590,44 @@ merged_data %>%
   theme_classic()
 
 
+############################
+# knee replacement 
+# cataract waiting
+knee_replacement <- oecd_data %>%
+  # selecting country column and length of stay column
+  select(c(2) | contains("Knee replacement")) %>%
+  select(c(1) | contains("Waiting times of patients on the list: Mean (days)")) %>%
+  rename(knee_replacement = 2) %>% 
+  # group the rows by countries and get mean of scans
+  group_by(country) %>%
+  summarise(mean_knee_replacement_waiting_time = mean(knee_replacement, na.rm = TRUE)) %>%
+  drop_na(2)
 
+########### merging ########
+merged_data <- income_and_spending_with_share %>% 
+  inner_join(knee_replacement, by = c("country"))
+
+# Scatterplot
+merged_data %>% 
+  ggplot() + 
+  geom_count(aes(mean_knee_replacement_waiting_time, expenditure_to_GDP, color = income_group), size = 2) + 
+  labs(title="Correlation of waiting times for knee replacement with spending",
+       subtitle = "?",
+       x="Mean number of days for knee replacement waiting list", y = "Healthcare expenditure") + 
+  geom_smooth(aes(mean_knee_replacement_waiting_time, expenditure_to_GDP), method=lm, se=FALSE) +
+  scale_color_brewer(palette="Dark2") + 
+  theme_classic()
+
+# Scatterplot with UHC
+merged_data %>% 
+  ggplot() + 
+  geom_count(aes(mean_knee_replacement_waiting_time, govt_contributions, color = income_group), size = 2) + 
+  labs(title="Correlation of waiting times with UHC",
+       subtitle = "?",
+       x="Mean number of days for knee replacement specilist assesement", y = "Healthcare expenditure") + 
+  geom_smooth(aes(mean_knee_replacement_waiting_time, govt_contributions), method=lm, se=FALSE) +
+  scale_color_brewer(palette="Dark2") + 
+  theme_classic()
 
 
 
