@@ -16,9 +16,9 @@ library(ggplot2)
 
 
 ```{r}
-setwd("~/Documents/Edinburgh/Datathon")
-oecd_data <- read_csv("oecd.csv")
-health_spending <- read_csv("HealthSpending.csv")
+setwd("~/Documents/R projects/Datathon")
+oecd_data <- read_csv("~/Documents/R projects/Datathon/raw_data/oecd.csv")
+health_spending <- read_csv("~/Documents/R projects/Datathon/raw_data/HealthSpending.csv")
 colnames(health_spending)[1] <- "COU"
 ```
 
@@ -42,7 +42,7 @@ colnames(hs_selected_countries)[2] <- "Hspending%GDP"
 Infant mortality, life expectancy, low birth weight data 
 
 ```{r}
-life_exp <- read_csv("lifeexpectancy.csv") %>% 
+life_exp <- read_csv("~/Documents/R projects/Datathon/raw_data/lifeexpectancy.csv") %>% 
   filter(COU == "AUT"|COU =="DNK"|COU =="IRL"|COU == "LUX"|
            COU == "NLD"|COU == "NOR"|COU == "SWE"|
            COU == "CHE"|COU == "ISL"|COU == "USA"|
@@ -53,7 +53,7 @@ life_exp <- read_csv("lifeexpectancy.csv") %>%
   select("COU", "Country", "Value")
 colnames(life_exp)[3] <- "Life Expectancy (years)"
 
-inf_mortality <- read_csv("infantmortality.csv") %>% 
+inf_mortality <- read_csv("~/Documents/R projects/Datathon/raw_data/infantmortality.csv") %>% 
   filter(COU == "AUT"|COU =="DNK"|COU =="IRL"|COU == "LUX"|
            COU == "NLD"|COU == "NOR"|COU == "SWE"|
            COU == "CHE"|COU == "ISL"|COU == "USA"|
@@ -64,7 +64,7 @@ inf_mortality <- read_csv("infantmortality.csv") %>%
   select("COU", "Value")
 colnames(inf_mortality)[2] <- "Deathsper1KLiveBirths"
 
-low_birth_weight <- read_csv("lowbirthweight.csv") %>% 
+low_birth_weight <- read_csv("~/Documents/R projects/Datathon/raw_data/lowbirthweight.csv") %>% 
   filter(COU == "AUT"|COU =="DNK"|COU =="IRL"|COU == "LUX"|
            COU == "NLD"|COU == "NOR"|COU == "SWE"|
            COU == "CHE"|COU == "ISL"|COU == "USA"|
@@ -98,11 +98,18 @@ b <- final_df %>% ggplot(aes(x = `Hspending%GDP`,
                              colour = `Country`)) +
   geom_point() +
   xlab("Health Spending, %GDP") +
-  ylab("Infant Deaths per 1000 Live Births")
+  ylab("Infant Deaths per 1000 Live Births") 
 
-a + b  +
+c <- final_df %>% ggplot(aes(x = `Hspending%GDP`,
+                             y = `%livebirths`,
+                             colour = `Country`)) +
+  geom_point() +
+  xlab("Health Spending, %GDP") +
+  ylab("low birth wt, % live births") 
+
+a + b  + c +
   plot_annotation(
-  title = "Health Spending vs Life Expectancy & Infant Mortality",
+  title = "Health Spending vs Life Expectancy, Infant Mortality, & Low Birth Weight Rate",
   subtitle = "of the 15 highest income countries",
   caption = "Data: OECD 2018"
 ) + 
