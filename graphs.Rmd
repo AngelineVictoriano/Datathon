@@ -1,0 +1,110 @@
+---
+title: "graphs"
+output: html_document
+date: "2022-10-30"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+```
+
+# Selected Visualizations
+
+## Correlation of healthcare spending  with healthcare outcomes
+
+
+```{r}
+setwd("~/Documents/Edinburgh/Datathon")
+oecd_data <- read_csv("oecd.csv")
+health_spending <- read_csv("HealthSpending.csv")
+colnames(health_spending)[1] <- "COU"
+```
+
+Create a subset of selected countries 
+
+```{r}
+hs_selected_countries <- health_spending %>% 
+  filter(COU == "AUT"|COU =="DNK"|COU =="IRL"|COU == "LUX"|
+           COU == "NLD"|COU == "NOR"|COU == "SWE"|
+           COU == "CHE"|COU == "ISL"|COU == "USA"|
+           COU == "CAN"|COU == "AUS"|COU == "BEL"|
+           COU == "FIN"|COU == "GBR",
+         MEASURE == "PC_GDP",
+         SUBJECT == "TOT",
+         TIME == 2018) %>% 
+  select("COU", "Value")
+colnames(hs_selected_countries)[2] <- "Hspending%GDP"
+
+```
+
+Infant mortality, life expectancy, low birth weight data 
+
+```{r}
+life_exp <- read_csv("lifeexpectancy.csv") %>% 
+  filter(COU == "AUT"|COU =="DNK"|COU =="IRL"|COU == "LUX"|
+           COU == "NLD"|COU == "NOR"|COU == "SWE"|
+           COU == "CHE"|COU == "ISL"|COU == "USA"|
+           COU == "CAN"|COU == "AUS"|COU == "BEL"|
+           COU == "FIN"|COU == "GBR",
+         VAR == "EVIETOTA",
+         Year == 2018) %>% 
+  select("COU", "Country", "Value")
+colnames(life_exp)[3] <- "Life Expectancy (years)"
+
+inf_mortality <- read_csv("infantmortality.csv") %>% 
+  filter(COU == "AUT"|COU =="DNK"|COU =="IRL"|COU == "LUX"|
+           COU == "NLD"|COU == "NOR"|COU == "SWE"|
+           COU == "CHE"|COU == "ISL"|COU == "USA"|
+           COU == "CAN"|COU == "AUS"|COU == "BEL"|
+           COU == "FIN"|COU == "GBR",
+         VAR == "MATIINFA",
+         Year == 2018) %>% 
+  select("COU", "Value")
+colnames(inf_mortality)[2] <- "Deathsper1KLiveBirths"
+
+low_birth_weight <- read_csv("lowbirthweight.csv") %>% 
+  filter(COU == "AUT"|COU =="DNK"|COU =="IRL"|COU == "LUX"|
+           COU == "NLD"|COU == "NOR"|COU == "SWE"|
+           COU == "CHE"|COU == "ISL"|COU == "USA"|
+           COU == "CAN"|COU == "AUS"|COU == "BEL"|
+           COU == "FIN"|COU == "GBR", 
+         Year == 2018) %>% 
+  select("COU", "Value")
+colnames(low_birth_weight)[2] <- "%livebirths"  
+```
+
+combine
+
+```{r}
+df_list <- list(hs_selected_countries, life_exp, inf_mortality, low_birth_weight)
+
+final_df <- df_list %>% 
+  reduce(full_join, by = "COU")
+```
+
+
+```{r}
+library(patchwork)
+a <- final_df %>% ggplot(aes(x = `Hspending%GDP`,
+                        y = `Life Expectancy (years)`,
+                        colour = `Country`)) +
+  geom_point() +
+  xlab("Health Spending, % GDP") 
+
+b <- final_df %>% ggplot(aes(x = `Hspending%GDP`,
+                             y = `Deathsper1KLiveBirths`,
+                             colour = `Country`)) +
+  geom_point() +
+  xlab("Health Spending, %GDP") +
+  ylab("Infant Deaths per 1000 Live Births")
+
+a + b  +
+  plot_annotation(
+  title = "Health Spending vs Life Expectancy & Infant Mortality",
+  subtitle = "of the 15 highest income countries",
+  caption = "Data: OECD 2018"
+) + 
+ plot_layout(guides = "collect") & theme(legend.position = 'bottom')
+```
