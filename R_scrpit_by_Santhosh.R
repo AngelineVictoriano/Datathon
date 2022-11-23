@@ -3,13 +3,14 @@ library(tidyverse)
 library(janitor)
 library(kableExtra)
 library(readxl)
+library(hrbrthemes)
 
 ########################################################
 # getting all the data
 ########################################################
 
 # reading world bank income data
-country_class_raw <- read_excel("CLASS.xlsx")
+country_class_raw <- read_excel(here::here("raw_data", "CLASS.xlsx"))
 
 country_class <- country_class_raw %>% 
   rename(country = Economy, income_group = "Income group") %>% 
@@ -123,14 +124,26 @@ merged_data <- health_expenditure_to_GDP %>%
 
 
 # plotting 
-merged_data %>%  ggplot(aes(x=reorder(country, expenditure_to_GDP), y = expenditure_to_GDP, fill = Income_group)) +
-  geom_bar(stat='identity', width=.4) +
-  labs(title = "Barplot showing Healthcare expenditure by each country",
-       subtitle = "as percentage of GDP",
-       x = "Coutries",
-       y = "Healthcare expenditure (% of GDP)",
+# income_and_spending_with_share %>%  ggplot(aes(x=reorder(country, expenditure_to_GDP), y = expenditure_to_GDP, fill = income_group)) +
+#   geom_bar(stat='identity', width=.4) +
+#   labs(title = "Barplot showing Healthcare expenditure by each country",
+#        subtitle = "as percentage of GDP",
+#        x = "Coutries",
+#        y = "Healthcare expenditure (% of GDP)",
+#        fill = "Income level") +
+#   coord_flip()
+
+merged_income_data %>%  
+  ggplot(aes(x=reorder(country, expenditure_to_GDP), y = expenditure_to_GDP, fill = income_group)) +
+  geom_bar(stat='identity', width=.5) +
+  labs(title = "Healthcare expenditure by countries",
+       subtitle = "As proportion of its GDP for the year 2019",
+       x = "Countries",
+       y = "Expenditure as % of GDP",
        fill = "Income level") +
-  coord_flip()
+  coord_flip() +
+  scale_fill_ipsum() +
+  theme_classic()
 
 ###################################################################
 # getting share of govt/compulsory input and voluntary/out-of-pocket contributions
@@ -181,8 +194,18 @@ saveRDS(income_and_spending_with_share, here::here("processed_data", "income_and
 # plotting bar chart
 ###################################################################
 
-# making the data frame more longer for better plotting. Using pivot longer function
-share_of_expenditure_longer<- share_of_expenditure %>%
+# # making the data frame more longer for better plotting. Using pivot longer function
+# share_of_expenditure_longer<- share_of_expenditure %>%
+#   pivot_longer(!country, names_to = "contributions_type", values_to = "contributions")
+
+merged_income_data <- merged_income_data %>%
+  arrange(govt_contributions)
+  
+
+# selecting only contribution share data (alternatively could have used initial data frame)
+share_of_expenditure_longer <- merged_income_data %>% 
+  select(country, govt_contributions, individual_contributions, unknown_contributions) %>% 
+  # making the data frame longer for better plotting. Using pivot longer function
   pivot_longer(!country, names_to = "contributions_type", values_to = "contributions")
 
 # Grouped
@@ -194,15 +217,16 @@ ggplot(aes(x=fct_inorder(country), y=contributions, fill=contributions_type)) +
 # Grouped but with stacked
 share_of_expenditure_longer %>% 
   ggplot(aes(x=fct_inorder(country), y=contributions, fill=contributions_type)) + 
-  geom_bar(position="fill", stat="identity") +
-  labs(title = "Stacked bar chart showing share of healthcare expenditure  year 2019",
-       subtitle = "between governament and individual contributions (voluntary schemes or out-of-pocket)",
+  geom_bar(position="fill", stat="identity", width=.6) +
+  labs(title = "Share of healthcare expenditure by type",
+       subtitle = "Between compulsory/governament and individual contributions",
        x = "Countries",
        y = "Share of expenditure",
        fill = "Portion of share") +
   scale_y_continuous(labels = scales::percent) +
-  scale_fill_discrete(labels=c('Governament', 'Individual', 'Unknown')) +
-  coord_flip() 
+  scale_fill_ipsum(labels=c('Governament', 'Individual', 'Unknown')) +
+  theme_classic() +
+  coord_flip()
 
 ###################################################################
 # healthcare utilization
@@ -239,16 +263,33 @@ library(ggExtra)
 library(hrbrthemes)
 
 # plotting 
-merged_data %>%
-  rename(income_group = "Income group") %>% 
-  ggplot(aes(x=mean_consultations, y = expenditure_to_GDP, shape = income_group, color = income_group)) +
-  geom_point(size = 3) +
+# merged_data %>%
+#   rename(income_group = "Income group") %>% 
+#   ggplot(aes(x=mean_consultations, y = expenditure_to_GDP, shape = income_group, color = income_group)) +
+#   geom_point(size = 3) +
+#   geom_smooth(method=lm, se=FALSE, fullrange=FALSE) +
+#   labs(title="Correlation of number of consultations with health expenditure",
+#        subtitle = "is investing more in health reduces number of health consultations?",
+#        x="Number of consultations per capita", y = "Health expenditure as percentage of GDP") + 
+#   scale_color_brewer(palette="Dark2") + 
+#   theme_classic()
+
+df_for_plotting <- consultations %>% 
+  inner_join(merged_income_data, by = c("country"))
+
+# plotting 
+df_for_plotting %>%
+  ggplot(aes(x=mean_consultations, y = expenditure_to_GDP, color = income_group)) +
+  geom_point(size = 3, alpha = 0.5) +
   geom_smooth(method=lm, se=FALSE, fullrange=FALSE) +
   labs(title="Correlation of number of consultations with health expenditure",
-       subtitle = "is investing more in health reduces number of health consultations?",
-       x="Number of consultations per capita", y = "Health expenditure as percentage of GDP") + 
-  scale_color_brewer(palette="Dark2") + 
+       subtitle = "is investing more in public health reduces number of health consultations?",
+       x="Number of consultations per capita", 
+       y = "Health expenditure as percentage of GDP",
+       color = "Income group") +
+  scale_fill_ipsum() +
   theme_classic()
+
 
 ########################################
 # correlating the same with share of govt or compulsory healthcare funding
@@ -258,18 +299,32 @@ merged_data <- merged_data %>%
   inner_join(share_of_expenditure, by = c("country"))
 
 # plotting
-merged_data %>%
-  rename(income_group = "Income group") %>% 
-  ggplot(aes(x=mean_consultations, y = govt_contributions, shape = income_group, color = income_group, size = expenditure_to_GDP)) +
+# merged_data %>%
+#   rename(income_group = "Income group") %>% 
+#   ggplot(aes(x=mean_consultations, y = govt_contributions, shape = income_group, color = income_group, size = expenditure_to_GDP)) +
+#   geom_point(alpha=0.7) +
+#   labs(title="Correlation of number of consultations with health expenditure",
+#        subtitle = "is there a relationship with free healthcare and number of consultations?",
+#        x="Number of consultations per capita", y = "Share of govt or compulsary healthcare financing",
+#        color = "Income group",
+#        size="Amount as percentage of GDP",
+#        shape= "") + 
+#   scale_color_brewer(palette="Dark2") + 
+#   theme_classic()
+
+
+# plotting 
+df_for_plotting %>%
+  ggplot(aes(x=mean_consultations, y = govt_contributions, color = income_group, size = expenditure_to_GDP)) +
   geom_point(alpha=0.7) +
   labs(title="Correlation of number of consultations with health expenditure",
        subtitle = "is there a relationship with free healthcare and number of consultations?",
-       x="Number of consultations per capita", y = "Share of govt or compulsary healthcare financing",
+       x="Number of consultations per capita", 
+       y = "Share of govt or compulsary healthcare financing",
        color = "Income group",
-       size="Amount as percentage of GDP",
-       shape= "") + 
-  scale_color_brewer(palette="Dark2") + 
-  theme_classic()
+       size="Amount as percentage of GDP") +
+    scale_color_brewer(palette="Dark2") +
+    theme_classic()
 
 ##################################################################################
 # getting data for immunization
@@ -293,18 +348,43 @@ merged_data <- income_and_spending %>%
   inner_join(mean_immunization, by = c("country"))
 
 
-# plotting 
-merged_data %>%
-  ggplot(aes(x=influenza, y = expenditure_to_GDP, shape = income_group, color = income_group)) +
-  geom_point(size = 3) +
-  geom_smooth(method=lm, se=FALSE, fullrange=FALSE) +
+# # plotting 
+# merged_data %>%
+#   ggplot(aes(x=influenza, y = expenditure_to_GDP, shape = income_group, color = income_group)) +
+#   geom_point(size = 3) +
+#   geom_smooth(method=lm, se=FALSE, fullrange=FALSE) +
+#   labs(title="Correlation of influenza immunisation coverage with health expenditure",
+#        subtitle = "Is higher spending correlates with higher immunisation cover?",
+#        x="Percentage of people covered", 
+#        y = "Health expenditure as percentage of GDP",
+#        shape = "Income group",
+#        color = "Income group") + 
+#   scale_color_brewer(palette="Dark2") + 
+#   theme_classic()
+
+mean_immunization <- oecd_data %>%
+  # selecting country column and Immunization columns
+  select(c(2) | contains("Immunisation")) %>%
+  # group the rows by countries and get mean of immunization values
+  group_by(country) %>%
+  summarise(across(everything(), list(mean), na.rm = TRUE)) %>% 
+  # renaming the columns as good variable format
+  rename(hepatitis = 2, influenza=3, DPT=4, Measles=5)
+
+# merging with income data
+df_for_plotting <- mean_immunization %>% 
+  inner_join(merged_income_data, by = c("country"))
+
+df_for_plotting %>%
+  ggplot(aes(x=influenza, y = expenditure_to_GDP, color = income_group)) +
+  geom_point(size = 3, alpha = 0.5) +
+  geom_smooth(method=lm, se=FALSE) +
   labs(title="Correlation of influenza immunisation coverage with health expenditure",
        subtitle = "Is higher spending correlates with higher immunisation cover?",
        x="Percentage of people covered", 
        y = "Health expenditure as percentage of GDP",
-       shape = "Income group",
        color = "Income group") + 
-  scale_color_brewer(palette="Dark2") + 
+  scale_fill_ipsum() +
   theme_classic()
 
 ########################################
@@ -316,7 +396,19 @@ merged_data <- merged_data %>%
 
 
 # plotting
-merged_data %>%
+# merged_data %>%
+#   ggplot(aes(x=influenza, y = govt_contributions, color = income_group, size = expenditure_to_GDP)) +
+#   geom_point(alpha=0.7) +
+#   labs(title="Correlation of influensa vaccination cover with health expenditure",
+#        subtitle = " bimodal distribution of influensa coverate with health expenditure?",
+#        x="influensa vaccine coverage", y = "Share of govt or compulsary healthcare financing",
+#        color = "Income group",
+#        size="Amount as percentage of GDP") + 
+#   scale_color_brewer(palette="Dark2") + 
+#   theme_classic()
+
+# plotting
+df_for_plotting %>%
   ggplot(aes(x=influenza, y = govt_contributions, color = income_group, size = expenditure_to_GDP)) +
   geom_point(alpha=0.7) +
   labs(title="Correlation of influensa vaccination cover with health expenditure",
