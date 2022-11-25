@@ -4,6 +4,7 @@ library(janitor)
 library(kableExtra)
 library(readxl)
 library(hrbrthemes)
+library(ggrepel)
 
 ########################################################
 # getting all the data
@@ -437,31 +438,68 @@ mean_screening_rate <- oecd_data %>%
 
 
 #################################
-# merging
-merged_data <- income_and_spending_with_share %>% 
-  inner_join(mean_screening_rate, by = c("country"))
+# # merging
+# merged_data <- income_and_spending_with_share %>% 
+#   inner_join(mean_screening_rate, by = c("country"))
+# 
+# library(ggExtra)
+# 
+# # Scatterplot
+# ggplot(merged_data, aes(cervical, expenditure_to_GDP, color = income_group)) + 
+#   geom_count(size = 2) + 
+#   geom_smooth(method="lm", se=F) +
+#   labs(title="Correlation of cervical cancer screening with health expenditure",
+#        subtitle = " Does increased healthcare spending allows more people to get screened?",
+#        x="Cervical cancer screening rate (programme data)", y = "Healthcare expentidure (% of GDP)",
+#        color = "Income group") + 
+#   scale_color_brewer(palette="Dark2") + 
+#   theme_classic()
+# 
+# # Similar but govt/ compulsory healthcare financing
+# ggplot(merged_data, aes(cervical, govt_contributions)) + 
+#   geom_count(size = 2) + 
+#   geom_smooth(method="lm", se=F) +
+#   labs(title="Correlation of cervical cancer screening with free healthcare",
+#        subtitle = "?",
+#        x="Cervical cancer screening rate (programme data)", y = "Share of free healthcare financing") + 
+#   scale_color_brewer(palette="Dark2") + 
+#   theme_classic()
 
-library(ggExtra)
+mean_screening_rate <- oecd_data %>%
+  # selecting country column and cervical screening columns
+  select(c(2) | contains("cancer screening, programme data")) %>%
+  # selecting cervical, breast colorectal columns. for colorectal cases, selecting "population" only one column
+  select(c(1) | contains("Cervical") | contains("Breast") | contains("population")) %>%
+  # group the rows by countries and get mean of screening rate
+  group_by(country) %>%
+  summarise(across(everything(), list(mean), na.rm = TRUE)) %>% 
+  # renaming columns
+  rename(cervical = 2, breast= 3, colorectal = 4)
 
-# Scatterplot
-ggplot(merged_data, aes(cervical, expenditure_to_GDP, color = income_group)) + 
-  geom_count(size = 2) + 
-  geom_smooth(method="lm", se=F) +
+# merging with income data
+df_for_plotting <- mean_screening_rate %>% 
+  inner_join(merged_income_data, by = c("country"))
+
+df_for_plotting %>% 
+  ggplot(aes(cervical, expenditure_to_GDP, color = income_group)) + 
+  geom_point(size = 3, alpha = 0.5) +
+  geom_smooth(method=lm, se=FALSE) +
   labs(title="Correlation of cervical cancer screening with health expenditure",
        subtitle = " Does increased healthcare spending allows more people to get screened?",
        x="Cervical cancer screening rate (programme data)", y = "Healthcare expentidure (% of GDP)",
        color = "Income group") + 
-  scale_color_brewer(palette="Dark2") + 
+  scale_fill_ipsum() +
   theme_classic()
 
-# Similar but govt/ compulsory healthcare financing
-ggplot(merged_data, aes(cervical, govt_contributions)) + 
-  geom_count(size = 2) + 
-  geom_smooth(method="lm", se=F) +
+df_for_plotting %>% 
+  ggplot(aes(cervical, govt_contributions, size = expenditure_to_GDP)) + 
+  geom_point(size = 3, alpha = 0.5) +
+  geom_smooth(method=lm, se=FALSE) +
   labs(title="Correlation of cervical cancer screening with free healthcare",
-       subtitle = "?",
-       x="Cervical cancer screening rate (programme data)", y = "Share of free healthcare financing") + 
-  scale_color_brewer(palette="Dark2") + 
+       subtitle = " Does financially free access to healthcare allows more people to get screened?",
+       x="Cervical cancer screening rate (programme data)", y = "Share of government/compulsory financing in healthcare",
+       color = "Amount of healthcare financing (% of GDP)") + 
+  scale_fill_ipsum() +
   theme_classic()
 
 
@@ -684,7 +722,6 @@ merged_data %>%
 
 ############################
 # knee replacement 
-# cataract waiting
 knee_replacement <- oecd_data %>%
   # selecting country column and length of stay column
   select(c(2) | contains("Knee replacement")) %>%
